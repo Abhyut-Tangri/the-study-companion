@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quill</title>
+<style>
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+  canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; image-rendering: crisp-edges; cursor: pointer; }
+  #bubble {
+    position: absolute; top: 4px; max-width: 220px; padding: 5px 9px;
+    font: italic 13px/1.3 Georgia, "Times New Roman", serif;
+    color: #f1e6cc; background: #3b2a1c; border: 1px solid #8a6a44; border-radius: 6px;
+    white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity .25s;
+  }
+  #bubble.show { opacity: 1; }
+</style>
+</head>
+<body>
+<canvas id="c" aria-label="Quill the scholar owl. Click for a study tip." role="img"></canvas>
+<div id="bubble" aria-live="polite"></div>
+<script>
+(() => {
+  // ---- Settings you can change ----------------------------------------------
+  const SCALE = 3;          // pixel size: 16px sprite x 3 = 48px tall
+  const WALK_SPEED = 28;    // CSS px per second
+  const LINES = [
+    "One page at a time.",
+    "Check your Next 7 days.",
+    "Tea break earned.",
+    "Small steps still count.",
+    "Start with the hardest five minutes.",
+    "Overdue? Reschedule or do it.",
+    "Read the rubric twice.",
+    "Water, then work.",
+    "Close a tab. Open a book.",
+    "Future you says thanks.",
+    "Done is better than perfect.",
+    "Sunday review keeps Monday calm.",
+    "Twenty minutes of reading. Hoo.",
+    "Write it down so you can let it go.",
+    "Sleep is part of studying.",
+    "You know more than yesterday.",
+    "Ask the question in office hours."
+  ];
+  // Palette: index -> colour ("" = transparent)
+  const PAL = {
+    ".": "", o: "#24170e", b: "#5b3b23", w: "#7a5333", c: "#efe2c4",
+    g: "#d6a93c", e: "#1a1008", k: "#c48a3a", r: "#7b2f22", p: "#f4ecd8"
+  };
+  // ---- Sprite (16 x 16), facing right --------------------------------------
+  const HEAD = [
+    "...oo......oo...",
+    "...obo....obo...",
+    "...obboooobbo...",
+    "..obbbbbbbbbbo..",
+    "..obccccccccbo..",
+    "..obcggccggcbo..",
+    "..obgeggggegbo..",
+    "..obcggkkggcbo..",
+    "..obccccccccbo..",
+    "..owbccccccbwo..",
+    "..owbccccccbwo..",
+    "..owbbccccbbwo..",
+    "...owbbbbbbwo...",
+    "....oobbbboo...."
+  ];
+  const FEET = {
+    a: ".....kk..kk.....",
+    b: "....kk....kk....",
+    c: "......kk.kk....."
+  };
+  const BLINK_ROW = "..obggggggggbo..";
+  const BOOK_CLOSED = ["orrro", "orrpo", "orrpo", "ooooo"];       // carried at side
+  const BOOK_OPEN = [
+    ["rpppopppr", "rpwwopwwr", "rrrrorrrr"],
+    ["rpppo.pp.", "rpwwoppp.", "rrrrorrrr"]
+  ];
+
+  const canvas = document.getElementById("c");
+  const ctx = canvas.getContext("2d");
+  const bubble = document.getElementById("bubble");
+  const params = new URLSearchParams(location.search);
+  const bg = params.get("bg");
+  if (bg && /^[0-9a-fA-F]{3,8}$/.test(bg)) document.body.style.background = "#" + bg;
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  let W = 0, H = 0, dpr = 1;
+  function resize() {
+    dpr = Math.max(1, Math.round(window.devicePixelRatio || 1));
+    W = canvas.clientWidth; H = canvas.clientHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.imageSmoothingEnabled = false;
+  }
+  addEventListener("resize", resize);
+  resize();
+
+  const SIZE = 16 * SCALE;
+  const owl = {
+    x: reduced ? 24 : Math.random() * Math.max(1, W - SIZE),
+    dir: 1, state: "walk", timer: 2 + Math.random() * 4,
+    frame: 0, frameT: 0, hopT: -1, blinkT: 3, blinking: 0
+  };
+
+  function rows(grid, ox, oy, flip) {
+    const px = SCALE * dpr;
+    for (let y = 0; y < grid.length; y++) {
+      const row = grid[y];
+      for (let x = 0; x < row.length; x++) {
+        const col = PAL[row[x]];
+        if (!col) continue;
+        const gx = flip ? 15 - (ox + x) : ox + x;
+        ctx.fillStyle = col;
+        ctx.fillRect(gx * px, (oy + y) * px, px, px);
+      }
+    }
+  }
+
+  function draw(baseX, baseY) {
+    ctx.save();
+    ctx.translate(Math.round(baseX * dpr), Math.round(baseY * dpr));
+    const flip = owl.dir < 0;
+    const walking = owl.state === "walk";
+    const bob = walking && owl.frame % 2 === 1 ? 1 : 0;
+    const head = HEAD.slice();
+    if (owl.blinking > 0) head[6] = BLINK_ROW;
+    rows(head, 0, 1 + bob, flip);
+    const feet = walking ? [FEET.a, FEET.b, FEET.a, FEET.c][owl.frame % 4] : FEET.a;
+    rows([feet], 0, 15, flip);
+    if (owl.state === "read") rows(BOOK_OPEN[owl.frame % 2], 3, 10, flip);
+    else rows(BOOK_CLOSED, 11, 9 + bob, flip);
+    ctx.restore();
+  }
+
+  function pickNext() {
+    if (reduced) { owl.state = Math.random() < 0.5 ? "idle" : "read"; owl.timer = 4 + Math.random() * 5; return; }
+    const r = Math.random();
+    if (owl.state !== "walk" && r < 0.6) { owl.state = "walk"; owl.timer = 3 + Math.random() * 6; if (Math.random() < 0.3) owl.dir *= -1; }
+    else if (r < 0.75) { owl.state = "read"; owl.timer = 3 + Math.random() * 4; }
+    else if (r < 0.9) { owl.state = "idle"; owl.timer = 1.5 + Math.random() * 2.5; }
+    else { owl.state = "idle"; owl.timer = 1.2; owl.hopT = 0; }
+  }
+
+  let last = performance.now();
+  function tick(now) {
+    const dt = Math.min(0.1, (now - last) / 1000);
+    last = now;
+
+    owl.timer -= dt;
+    if (owl.timer <= 0) pickNext();
+
+    const fps = owl.state === "walk" ? 7 : owl.state === "read" ? 1.5 : 2;
+    owl.frameT += dt;
+    if (owl.frameT >= 1 / fps) { owl.frameT = 0; owl.frame++; }
+
+    owl.blinkT -= dt;
+    if (owl.blinkT <= 0) { owl.blinking = 0.15; owl.blinkT = 2.5 + Math.random() * 4; }
+    if (owl.blinking > 0) owl.blinking -= dt;
+
+    if (owl.state === "walk") {
+      owl.x += owl.dir * WALK_SPEED * dt;
+      const maxX = Math.max(0, W - SIZE);
+      if (owl.x <= 0) { owl.x = 0; owl.dir = 1; }
+      if (owl.x >= maxX) { owl.x = maxX; owl.dir = -1; }
+    }
+
+    let hop = 0;
+    if (owl.hopT >= 0 && !reduced) {
+      owl.hopT += dt;
+      const t = owl.hopT / 0.4;
+      if (t >= 1) owl.hopT = -1; else hop = Math.sin(t * Math.PI) * 8;
+    }
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const y = Math.max(0, H - SIZE - 2) - hop;
+    draw(owl.x, y);
+    placeBubble(y);
+    requestAnimationFrame(tick);
+  }
+
+  let bubbleTimer = 0;
+  function placeBubble(y) {
+    if (!bubble.classList.contains("show")) return;
+    const bw = bubble.offsetWidth;
+    const right = owl.x + SIZE + 6;
+    const left = owl.x - bw - 6;
+    bubble.style.left = (right + bw <= W || left < 0 ? Math.min(right, Math.max(0, W - bw)) : left) + "px";
+    bubble.style.top = Math.max(2, y + 4) + "px";
+  }
+
+  canvas.addEventListener("click", (ev) => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = ev.clientX - rect.left;
+    if (mx < owl.x - 10 || mx > owl.x + SIZE + 10) return;
+    bubble.textContent = LINES[Math.floor(Math.random() * LINES.length)];
+    bubble.classList.add("show");
+    if (!reduced) owl.hopT = 0;
+    owl.state = "idle"; owl.timer = 3;
+    clearTimeout(bubbleTimer);
+    bubbleTimer = setTimeout(() => bubble.classList.remove("show"), 3000);
+  });
+
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
