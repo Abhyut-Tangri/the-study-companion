@@ -573,6 +573,54 @@ def course_rooftop(seed):
     return cv
 
 
+def manta(seed):
+    """A manta ray gliding left with a few small fish, on a transparent background."""
+    from PIL import ImageDraw
+    rng = random.Random(seed * 11 + 12)
+    cv = Canvas(120, 56, transparent=True)
+    upper = [(14, 28), (12, 25), (17, 25), (22, 24), (30, 19), (40, 13), (50, 8), (60, 4), (66, 3),
+             (65, 7), (65, 12), (69, 17), (77, 22), (85, 26), (88, 28)]
+    lower = [(88, 28), (84, 30), (76, 33), (68, 37), (64, 42), (62, 48), (60, 51), (54, 48), (46, 43),
+             (36, 37), (26, 33), (20, 31), (17, 31), (12, 31)]
+    mask = Image.new("L", (cv.w, cv.h), 0)
+    ImageDraw.Draw(mask).polygon(upper + lower, fill=1)
+    m = mask.load()
+    inside = lambda x, y: 0 <= x < cv.w and 0 <= y < cv.h and m[x, y]
+    axis = lambda x: 28 + (x - 14) * 0.01
+    for y in range(cv.h):
+        for x in range(cv.w):
+            if not m[x, y]:
+                continue
+            if y <= axis(x):                              # top of the wing, catching light
+                c = ICE if not inside(x, y - 2) else TEAL
+            else:                                         # underside in shadow
+                c = MID if y > 41 or not inside(x, y + 3) else PERI
+            cv.set(x, y, c)
+    for x in range(cv.w):                                 # outline for contrast on any background
+        for y in range(cv.h):
+            if m[x, y] and any(not inside(x + dx, y + dy) for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))):
+                cv.set(x, y, NAVY)
+    for x in range(20, 84):                               # body ridge
+        cv.set(x, axis(x) - 1, TEAL)
+    for x, y in ((34, 22), (42, 18), (50, 14), (46, 21), (56, 12), (38, 24)):   # pale back markings
+        if inside(x, y):
+            cv.set(x, y, MOON)
+    cv.set(17, 27, BLACK)                                 # eye
+    for i in range(30):                                   # whip tail
+        cv.set(88 + i, 28 + i * 0.1 + math.sin(i / 4) * 0.8, PERI if i < 18 else MID)
+    for fx, fy in ((24, 46), (32, 50), (42, 47), (16, 52), (96, 42)):   # little fish swimming left
+        cv.set(fx, fy, ICE)
+        cv.rect(fx + 1, fy - 1, fx + 4, fy + 2, PERI)
+        cv.set(fx + 4, fy - 1, TEAL)
+        cv.set(fx + 4, fy + 1, TEAL)
+        cv.set(fx + 1, fy, NAVY)
+    for _ in range(14):                                   # bubbles
+        x, y = rng.randrange(cv.w), rng.randrange(cv.h)
+        if not inside(x, y) and cv.get(x, y) is None:
+            cv.set(x, y, ICE if rng.random() < 0.5 else PERI)
+    return cv
+
+
 def icon_planet(seed):
     cv = Canvas(56, 56, transparent=True)
     ringed_planet(cv, 28, 29, 14, 26, 6.5, tilt=-0.4)
@@ -593,6 +641,7 @@ SCENES = [
     ("course-4.png", course_desert),
     ("course-5.png", course_rooftop),
     ("icon-planet.png", icon_planet),
+    ("manta.png", manta),
 ]
 
 
