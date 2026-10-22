@@ -23,9 +23,9 @@
   const bg = q.get("bg");
   if (bg && /^[0-9a-fA-F]{3,8}$/.test(bg)) document.body.style.background = "#" + bg;
   const isDate = s => /^\d{4}-\d{2}-\d{2}$/.test(s || "");
-  // Semester defaults: earliest and latest Due dates in the Tasks database.
+  // Semester defaults: earliest Due date in Tasks, and the last day of classes.
   const semStart = new Date((isDate(q.get("start")) ? q.get("start") : "2026-10-22") + "T00:00:00");
-  const semEnd = new Date((isDate(q.get("end")) ? q.get("end") : "2026-12-11") + "T23:59:59");
+  const semEnd = new Date((isDate(q.get("end")) ? q.get("end") : "2026-12-08") + "T23:59:59");
 
   function spans(now) {
     const y = now.getFullYear(), m = now.getMonth();
