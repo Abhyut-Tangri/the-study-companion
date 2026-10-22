@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>progress</title>
+<style>
+  :root { --text: #d4d4d4; --muted: #8a8f98; --bar: #3fb8af; --line: #3a3f4b; }
+  html, body { margin: 0; background: transparent; color: var(--text);
+    font: 12px/1.4 ui-monospace, "JetBrains Mono", SFMono-Regular, Menlo, monospace; }
+  .wrap { max-width: 300px; margin: 0 auto; padding: 6px 4px; }
+  .row { display: grid; grid-template-columns: 1fr 112px; align-items: center; gap: 10px; margin: 6px 0; }
+  .track { height: 10px; border: 1px solid var(--line); padding: 1px; }
+  .fill { height: 100%; background: var(--bar); width: 0; }
+  .lab { color: var(--bar); font-variant-numeric: tabular-nums; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="wrap" id="rows"></div>
+<script>
+(() => {
+  const q = new URLSearchParams(location.search);
+  const bg = q.get("bg");
+  if (bg && /^[0-9a-fA-F]{3,8}$/.test(bg)) document.body.style.background = "#" + bg;
+  const isDate = s => /^\d{4}-\d{2}-\d{2}$/.test(s || "");
+  // Semester defaults: earliest and latest Due dates in the Tasks database.
+  const semStart = new Date((isDate(q.get("start")) ? q.get("start") : "2026-10-22") + "T00:00:00");
+  const semEnd = new Date((isDate(q.get("end")) ? q.get("end") : "2026-12-11") + "T23:59:59");
+
+  function spans(now) {
+    const y = now.getFullYear(), m = now.getMonth();
+    const weekStart = new Date(y, m, now.getDate() - now.getDay());
+    return [
+      ["year", new Date(y, 0, 1), new Date(y + 1, 0, 1)],
+      ["month", new Date(y, m, 1), new Date(y, m + 1, 1)],
+      ["week", weekStart, new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 7)],
+      ["semester", semStart, semEnd]
+    ];
+  }
+  const rows = document.getElementById("rows");
+  function render() {
+    const now = new Date();
+    rows.innerHTML = "";
+    for (const [name, a, b] of spans(now)) {
+      const pct = Math.max(0, Math.min(100, Math.floor((now - a) / (b - a) * 100)));
+      const row = document.createElement("div");
+      row.className = "row";
+      row.innerHTML = `<div class="track" role="progressbar" aria-label="${name}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><div class="fill" style="width:${pct}%"></div></div><div class="lab">${name}: ${pct}%</div>`;
+      rows.append(row);
+    }
+  }
+  render();
+  setInterval(render, 60 * 1000);
+})();
+</script>
+</body>
+</html>

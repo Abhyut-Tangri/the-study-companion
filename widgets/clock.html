@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>clock</title>
+<style>
+  :root { --text: #d4d4d4; --muted: #8a8f98; --accent: #5b6fd6; }
+  html, body { margin: 0; height: 100%; background: transparent; color: var(--text);
+    font: 12px/1.4 ui-monospace, "JetBrains Mono", SFMono-Regular, Menlo, monospace; }
+  body { display: flex; align-items: center; justify-content: center; }
+  svg { width: min(100vw, 100vh, 240px); height: auto; display: block; }
+  text { fill: var(--text); font-family: inherit; }
+</style>
+</head>
+<body>
+<svg viewBox="0 0 200 200" role="img" aria-labelledby="t">
+  <title id="t">orbit clock</title>
+  <g fill="none" stroke="#d4d4d4" stroke-width="1">
+    <circle cx="100" cy="100" r="92"/>
+    <circle cx="100" cy="100" r="70" stroke="#8a8f98"/>
+    <circle cx="100" cy="100" r="46" stroke="#8a8f98"/>
+  </g>
+  <g id="ticks" stroke="#d4d4d4" stroke-width="1"></g>
+  <circle id="h" r="6" fill="#d4d4d4"/>
+  <circle id="m" r="5" fill="#d4d4d4"/>
+  <circle id="s" r="3.5" fill="#d4d4d4" stroke="#5b6fd6" stroke-width="1"/>
+  <text id="time" x="100" y="98" text-anchor="middle" font-size="12" font-weight="600"></text>
+  <text id="day" x="100" y="114" text-anchor="middle" font-size="9" style="fill:#8a8f98"></text>
+</svg>
+<script>
+(() => {
+  const bg = new URLSearchParams(location.search).get("bg");
+  if (bg && /^[0-9a-fA-F]{3,8}$/.test(bg)) document.body.style.background = "#" + bg;
+  const NS = "http://www.w3.org/2000/svg";
+  const ticks = document.getElementById("ticks");
+  for (let i = 0; i < 12; i++) {
+    const a = i / 12 * Math.PI * 2, l = document.createElementNS(NS, "line");
+    l.setAttribute("x1", 100 + Math.sin(a) * 86); l.setAttribute("y1", 100 - Math.cos(a) * 86);
+    l.setAttribute("x2", 100 + Math.sin(a) * 80); l.setAttribute("y2", 100 - Math.cos(a) * 80);
+    ticks.append(l);
+  }
+  const place = (id, r, frac) => {
+    const a = frac * Math.PI * 2, e = document.getElementById(id);
+    e.setAttribute("cx", (100 + Math.sin(a) * r).toFixed(2));
+    e.setAttribute("cy", (100 - Math.cos(a) * r).toFixed(2));
+  };
+  function tick() {
+    const d = new Date();
+    const s = d.getSeconds(), m = d.getMinutes() + s / 60, h = (d.getHours() % 12) + m / 60;
+    place("h", 46, h / 12);
+    place("m", 70, m / 60);
+    place("s", 92, s / 60);
+    document.getElementById("time").textContent = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit" });
+    document.getElementById("day").textContent = d.toLocaleDateString("en-US", { weekday: "long" }).toLowerCase();
+  }
+  tick();
+  setInterval(tick, 1000);
+})();
+</script>
+</body>
+</html>

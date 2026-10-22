@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>counter</title>
+<style>
+  :root { --text: #d4d4d4; --muted: #8a8f98; --accent: #5b6fd6; --line: #3a3f4b; }
+  html, body { margin: 0; background: transparent; color: var(--text);
+    font: 12px/1.4 ui-monospace, "JetBrains Mono", SFMono-Regular, Menlo, monospace; }
+  .wrap { text-align: center; padding: 8px 4px; }
+  .label { color: var(--accent); font-weight: 600; font-size: 13px; text-transform: lowercase; margin-bottom: 4px; }
+  .ctl { display: inline-flex; align-items: center; gap: 8px; }
+  .n { min-width: 2.5ch; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  button { font: inherit; width: 22px; height: 22px; line-height: 1; color: var(--text); background: transparent;
+    border: 1px solid var(--line); cursor: pointer; padding: 0; }
+  button:hover { border-color: var(--accent); }
+  button:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+  .reset { display: block; margin: 4px auto 0; width: auto; height: auto; padding: 0 6px; border: 0; color: var(--muted); font-size: 10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="label" id="label"></div>
+  <div class="ctl">
+    <button id="dec" aria-label="Decrease">−</button>
+    <span class="n" id="n" aria-live="polite">0</span>
+    <button id="inc" aria-label="Increase">+</button>
+  </div>
+  <button class="reset" id="reset">reset</button>
+</div>
+<script>
+(() => {
+  const q = new URLSearchParams(location.search);
+  const bg = q.get("bg");
+  if (bg && /^[0-9a-fA-F]{3,8}$/.test(bg)) document.body.style.background = "#" + bg;
+  const label = (q.get("label") || "tasks done").slice(0, 40);
+  const key = "study-space-counter:" + label;
+  document.getElementById("label").textContent = label;
+  let n = 0;
+  try { n = parseInt(localStorage.getItem(key) || "0", 10) || 0; } catch (e) { /* storage blocked: start at 0 */ }
+  const show = () => {
+    document.getElementById("n").textContent = n;
+    try { localStorage.setItem(key, String(n)); } catch (e) { /* storage blocked: count lasts this session */ }
+  };
+  document.getElementById("inc").onclick = () => { n++; show(); };
+  document.getElementById("dec").onclick = () => { n = Math.max(0, n - 1); show(); };
+  document.getElementById("reset").onclick = () => { n = 0; show(); };
+  show();
+})();
+</script>
+</body>
+</html>

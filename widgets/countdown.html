@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>countdown</title>
+<style>
+  :root { --text: #d4d4d4; --muted: #8a8f98; }
+  html, body { margin: 0; background: transparent; color: var(--text);
+    font: 12px/1.4 ui-monospace, "JetBrains Mono", SFMono-Regular, Menlo, monospace; }
+  .wrap { max-width: 280px; margin: 0 auto; padding: 8px 4px; text-align: center; }
+  .row { display: grid; grid-template-columns: repeat(3, 1fr); }
+  .n { font-size: 28px; font-weight: 700; letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+  .l { font-size: 9px; letter-spacing: .25em; color: var(--muted); text-transform: uppercase; }
+  .label { margin-top: 6px; color: var(--muted); font-size: 11px; text-transform: lowercase; }
+</style>
+</head>
+<body>
+<div class="wrap" role="timer" aria-live="off">
+  <div class="row">
+    <div><div class="n" id="d">00</div><div class="l">days</div></div>
+    <div><div class="n" id="h">00</div><div class="l">hours</div></div>
+    <div><div class="n" id="m">00</div><div class="l">minutes</div></div>
+  </div>
+  <div class="label" id="label"></div>
+</div>
+<script>
+(() => {
+  const q = new URLSearchParams(location.search);
+  const bg = q.get("bg");
+  if (bg && /^[0-9a-fA-F]{3,8}$/.test(bg)) document.body.style.background = "#" + bg;
+  // Default: the latest Due date in the Tasks database (finals week).
+  const to = /^\d{4}-\d{2}-\d{2}$/.test(q.get("to") || "") ? q.get("to") : "2026-12-11";
+  const target = new Date(to + "T00:00:00");
+  const label = (q.get("label") || "until finals").slice(0, 40);
+  const pad = n => String(n).padStart(2, "0");
+  function tick() {
+    let ms = Math.max(0, target - new Date());
+    const d = Math.floor(ms / 864e5); ms -= d * 864e5;
+    const h = Math.floor(ms / 36e5); ms -= h * 36e5;
+    const m = Math.floor(ms / 6e4);
+    document.getElementById("d").textContent = pad(d);
+    document.getElementById("h").textContent = pad(h);
+    document.getElementById("m").textContent = pad(m);
+    document.getElementById("label").textContent = target - new Date() > 0 ? label : label + " — done";
+  }
+  tick();
+  setInterval(tick, 15000);
+})();
+</script>
+</body>
+</html>
